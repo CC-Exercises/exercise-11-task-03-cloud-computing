@@ -10,5 +10,7 @@ public class NotesDatabaseConfiguration {
 
 	@NotNull
 	public Mode mode;
-
+	
+	public String gcKeyFile;
+	public String gcProjectId;
 }
