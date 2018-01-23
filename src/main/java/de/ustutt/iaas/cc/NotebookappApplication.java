@@ -76,7 +76,8 @@ public class NotebookappApplication extends Application<NotebookappConfiguration
 		// enables use of Freemaker templates in config.yml
 		bootstrap.addBundle(new TemplateConfigBundle(new TemplateConfigBundleConfiguration().charset(Charsets.UTF_8)
 				.outputPath("config_generated.yml")
-				.addCustomProvider(new PropertiesFileTemplateConfigVariablesProvider("db.properties", "dbprops"))));
+				.addCustomProvider(new PropertiesFileTemplateConfigVariablesProvider("db.properties", "dbprops"))
+				.addCustomProvider(new PropertiesFileTemplateConfigVariablesProvider("gcds.properties", "gcdsprops"))));
 	}
 
 	@Override
@@ -111,7 +112,8 @@ public class NotebookappApplication extends Application<NotebookappConfiguration
 			break;
 		case gcds:
 			logger.info("Using Google Cloud Datastore notes storage");
-			dao = new GoogleDatastoreNotebookDAO();
+			dao = new GoogleDatastoreNotebookDAO(configuration.notesDatabaseConfiguration.gcKeyFile,
+					configuration.notesDatabaseConfiguration.gcProjectId);
 			break;
 		default:
 			logger.warn("Unknown or empty notes DB mode ({}), defaulting to tmp",
