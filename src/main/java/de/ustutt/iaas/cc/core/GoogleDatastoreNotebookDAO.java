@@ -25,13 +25,16 @@ import de.ustutt.iaas.cc.api.NoteWithText;
 /**
  * DAO implementation that stores notes as entities in Google Datastore (NoSQL).
  * 
- * @author hauptfn
  *
  */
 public class GoogleDatastoreNotebookDAO implements INotebookDAO {
 
 	private final static Logger logger = LoggerFactory.getLogger(GoogleDatastoreNotebookDAO.class);
-	private static final String ENTITY_KIND = "Note";
+	
+	// Kind/category of an entity
+	private static final String ENTITY_KIND_NOTE = "Note";
+	
+	// Properties of an entity
 	private static final String PROP_AUTHOR = "author";
 	private static final String PROP_TEXT = "text";
 
@@ -41,11 +44,17 @@ public class GoogleDatastoreNotebookDAO implements INotebookDAO {
 	public GoogleDatastoreNotebookDAO(String gcKeyFile, String gcProjectId) {
 		super();
 		try {
+			
+			// Setup credentials for client authentication
 			GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(gcKeyFile));
 			DatastoreOptions options = DatastoreOptions.newBuilder().setProjectId(gcProjectId)
 					.setCredentials(credentials).build();
+			
+			// Get datastore after authentication
 			this.datastore = options.getService();
-			this.keyFactory = this.datastore.newKeyFactory().setKind(ENTITY_KIND);
+			
+			// Create key factory for the kind 'Note'
+			this.keyFactory = this.datastore.newKeyFactory().setKind(ENTITY_KIND_NOTE);
 
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
@@ -59,7 +68,9 @@ public class GoogleDatastoreNotebookDAO implements INotebookDAO {
 	@Override
 	public Set<Note> getNotes() {
 		Set<Note> result = new HashSet<Note>();
-		Query<Entity> query = Query.newEntityQueryBuilder().setKind(ENTITY_KIND).build();
+		
+		// Build query for getting all entities from kind 'Note'
+		Query<Entity> query = Query.newEntityQueryBuilder().setKind(ENTITY_KIND_NOTE).build();
 		QueryResults<Entity> queryResults = this.datastore.run(query);
 
 		logger.info("getNotes:");
@@ -67,14 +78,17 @@ public class GoogleDatastoreNotebookDAO implements INotebookDAO {
 			Entity currentEntity = queryResults.next();
 			logger.info("key/id: {}", currentEntity.getKey().getId());
 			logger.info("author: {}", currentEntity.getString(PROP_AUTHOR));
-			result.add(new Note(currentEntity.getKey().getId().toString(), currentEntity.getString(PROP_AUTHOR)));
+			result.add(new Note(currentEntity.getKey().getId().toString(), 
+					currentEntity.getString(PROP_AUTHOR)));
 		}
 		return result;
 	}
 
 	@Override
 	public NoteWithText getNote(String noteID) {
+		// Get entity with the given 'noteID' from datastore
 		Entity currentEntity = this.datastore.get(this.keyFactory.newKey(Long.valueOf(noteID)));
+		
 		NoteWithText result = new NoteWithText(currentEntity.getKey().getId().toString(),
 				currentEntity.getString(PROP_AUTHOR), currentEntity.getString(PROP_TEXT));
 		return result;
@@ -85,16 +99,29 @@ public class GoogleDatastoreNotebookDAO implements INotebookDAO {
 		NoteWithText result = null;
 		if (note != null) {
 			Key key = null;
+			
+			// Check if key is available
 			if (StringUtils.isBlank(note.getId())) {
+				// Generate new key
 				key = this.datastore.allocateId(this.keyFactory.newKey());
 				note.setId(key.getId().toString());
+				logger.info("createOrUpdate: new key/id: {}", key.getId());
+
 			} else {
+				// Use existing key
 				key = this.keyFactory.newKey(Long.valueOf(note.getId()));
+
 			}
-			logger.info("createOrUpdate: key/id: {}", key.getId());
-			Entity entity = Entity.newBuilder(key).set(PROP_AUTHOR, note.getAuthor()).set(PROP_TEXT, note.getText())
+			
+			// Create entity and add content from the 'note' parameter
+			Entity entity = Entity.newBuilder(key)
+					.set(PROP_AUTHOR, note.getAuthor())
+					.set(PROP_TEXT, note.getText())
 					.build();
+			
+			// Entity will be overwritten if key exists otherwise a new entity will be created
 			this.datastore.put(entity);
+			
 			result = note;
 		}
 		return result;
